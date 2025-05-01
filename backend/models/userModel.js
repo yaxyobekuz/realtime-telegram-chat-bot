@@ -1,5 +1,16 @@
 const mongoose = require("mongoose");
 
+const profilePhotoSchema = new mongoose.Schema({
+  url: {
+    type: String,
+    default: null,
+  },
+  path: {
+    type: String,
+    default: null,
+  },
+});
+
 const userSchema = new mongoose.Schema({
   id: {
     type: Number,
@@ -19,10 +30,7 @@ const userSchema = new mongoose.Schema({
     default: "default",
     enum: ["default", "awaitingMessage"],
   },
-  photo: {
-    type: String,
-    default: null,
-  },
+  photo: profilePhotoSchema,
   createdAt: {
     type: Date,
     default: Date.now,
