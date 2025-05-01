@@ -1,5 +1,16 @@
 const mongoose = require("mongoose");
 
+const photoSchema = new mongoose.Schema({
+  url: {
+    type: String,
+    default: null,
+  },
+  path: {
+    type: String,
+    default: null,
+  },
+});
+
 const userSchema = new mongoose.Schema({
   id: {
     type: Number,
@@ -14,10 +25,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: "Mavjud emas!",
   },
-  photo: {
-    type: String,
-    default: null,
-  },
+  photo: photoSchema,
   createdAt: {
     type: Date,
     default: Date.now,
@@ -29,8 +37,9 @@ const messageSchema = new mongoose.Schema({
   type: {
     type: String,
     default: "text",
-    enum: ["text", "image", "video", "audio", "document"],
+    enum: ["text", "photo", "video", "audio", "document"],
   },
+  photo: photoSchema,
   isAdmin: {
     type: Boolean,
     default: false,
