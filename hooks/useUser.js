@@ -49,12 +49,12 @@ const useUser = (userId) => {
     }
   };
 
-  const isUserInState = (user, state) => {
-    if (!user?.state?.trim() || !state?.trim()) return;
-    return user?.state?.trim() === state?.trim();
+  const isUserInStatus = (user, status) => {
+    if (!user?.status?.trim() || !status?.trim()) return;
+    return user?.status?.trim() === status?.trim();
   };
 
-  return { findUserById, registerUser, isUserInState };
+  return { findUserById, registerUser, isUserInStatus };
 };
 
 module.exports = useUser;
