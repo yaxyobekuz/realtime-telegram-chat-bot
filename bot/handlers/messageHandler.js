@@ -5,6 +5,11 @@ const { socket } = require("../../backend/app");
 const useMessage = require("../../hooks/useMessage");
 const chats = require("../../backend/models/chatModel");
 const messages = require("../../backend/models/messagesModel");
+const {
+  getFile,
+  downloadImage,
+  uploadImageToObjectDB,
+} = require("../utils/helpers");
 
 bot.on("message", async (msg) => {
   const message = msg.text;
@@ -12,7 +17,7 @@ bot.on("message", async (msg) => {
 
   const { t } = useText(chatId);
   const { reply, matches } = useMessage(chatId, message);
-  const { findUserById, registerUser, isUserInState } = useUser(chatId);
+  const { findUserById, registerUser, isUserInStatus } = useUser(chatId);
   const user = await findUserById(); // Get user data from data base
 
   // Create user
@@ -25,7 +30,7 @@ bot.on("message", async (msg) => {
     }
   }
 
-  const isUserReadyForMessage = isUserInState(user, "awaitingMessage");
+  const isUserReadyForMessage = isUserInStatus(user, "awaitingMessage");
 
   // Create chat with admin
   if (matches("/chat") && !isUserReadyForMessage) {
@@ -59,8 +64,6 @@ bot.on("message", async (msg) => {
 
   // Send messages to admin
   if (isUserReadyForMessage) {
-    if (!message) return; // Check if message is not empty
-
     try {
       const chatMessages = await messages.findOne({ id: chatId });
 
@@ -73,12 +76,49 @@ bot.on("message", async (msg) => {
         return;
       }
 
-      chatMessages.messages.push({ text: message });
-      await chatMessages.save();
-      reply("Xabar muvaffaqiyatli yuborildi!");
+      const save = async () => {
+        await chatMessages.save();
+        reply("Xabar muvaffaqiyatli yuborildi!");
+      };
 
-      // Send new message data to chat app
-      socket.emit(`chatMessage:${chatId}`, { text: message, type: "text" });
+      if (message) {
+        chatMessages.messages.push({ text: message });
+
+        await save();
+
+        // Send new message data to chat app
+        return socket.emit(`chatMessage:${chatId}`, {
+          type: "text",
+          text: message,
+        });
+      }
+
+      // Photo
+      else if (msg.photo) {
+        const photoId = msg.photo[msg.photo.length - 1].file_id;
+
+        // Get message photo file url
+        const file = await getFile(photoId);
+        if (!file) return null;
+
+        // Get photo buffer
+        const imageBuffer = await downloadImage(file.url);
+        if (!imageBuffer) return null;
+
+        // Upload image to object data base
+        const uploaded = await uploadImageToObjectDB(imageBuffer, file.path);
+        if (!uploaded) return null;
+
+        chatMessages.messages.push({ type: "photo", photo: uploaded });
+
+        await save();
+
+        // Send new message data to chat app
+        return socket.emit(`chatMessage:${chatId}`, {
+          type: "photo",
+          photo: uploaded,
+        });
+      }
     } catch (err) {
       console.log("Xabar saqlashda xatolik: ", err);
       reply("Xabarni saqlab bo'lmadi.");
