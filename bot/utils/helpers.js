@@ -99,4 +99,9 @@ const getUserProfilePhotoUrl = async (userId) => {
   return uploaded; // Return upload image url & path
 };
 
-module.exports = { getUserProfilePhotoUrl };
+module.exports = {
+  getFile,
+  downloadImage,
+  uploadImageToObjectDB,
+  getUserProfilePhotoUrl,
+};

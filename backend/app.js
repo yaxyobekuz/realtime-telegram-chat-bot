@@ -3,7 +3,7 @@ const cors = require("cors");
 const express = require("express");
 const { Server } = require("socket.io");
 const { objectDBConfig } = require("../config");
-const { S3Client, ListBucketsCommand } = require("@aws-sdk/client-s3");
+const { S3Client } = require("@aws-sdk/client-s3");
 
 const app = express();
 
