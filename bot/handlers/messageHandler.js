@@ -101,23 +101,17 @@ bot.on("message", async (msg) => {
         const file = await getFile(photoId);
         if (!file) return null;
 
-        // Get photo buffer
-        const imageBuffer = await downloadImage(file.url);
-        if (!imageBuffer) return null;
+        const messageData = {
+          type: "photo",
+          caption: msg.caption,
+          photo: { url: file.url, path: file.path },
+        };
 
-        // Upload image to object data base
-        const uploaded = await uploadImageToObjectDB(imageBuffer, file.path);
-        if (!uploaded) return null;
-
-        chatMessages.messages.push({ type: "photo", photo: uploaded });
-
+        chatMessages.messages.push(messageData);
         await save();
 
         // Send new message data to chat app
-        return socket.emit(`chatMessage:${chatId}`, {
-          type: "photo",
-          photo: uploaded,
-        });
+        return socket.emit(`chatMessage:${chatId}`, messageData);
       }
     } catch (err) {
       console.log("Xabar saqlashda xatolik: ", err);

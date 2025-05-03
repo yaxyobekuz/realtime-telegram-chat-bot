@@ -34,6 +34,7 @@ const userSchema = new mongoose.Schema({
 
 const messageSchema = new mongoose.Schema({
   text: String,
+  caption: String,
   type: {
     type: String,
     default: "text",
