@@ -1,22 +1,49 @@
 const bot = require("../bot/bot");
-const { socket } = require("./app");
+const { socket: io } = require("./app");
+const chats = require("./models/chatModel");
 const messages = require("./models/messagesModel");
 
-socket.on("connection", (socket) => {
+io.on("connection", (socket) => {
   socket.on("sendMessage", async (data, callback) => {
-    const { text, chatId } = data;
-    const chatMessages = await messages.findOne({ id: chatId });
+    try {
+      const { text, chatId } = data;
 
-    const payload = { text, isAdmin: true, type: "text" };
+      console.log("salom: kaylam", text);
 
-    await bot.sendMessage(chatId, text);
+      // Validate input
+      if (!text || !chatId) {
+        return callback({ success: false, message: "Invalid data" });
+      }
 
-    chatMessages.messages.push(payload);
+      const chatMessages = await messages.findOne({ id: chatId });
+      if (!chatMessages) {
+        return callback({ success: false, message: "Chat not found" });
+      }
 
-    await chatMessages.save();
+      const payload = { text, isAdmin: true, type: "text" };
 
-    callback({ success: true, message: 'Xabar yuborildi' });
-    
-    socket.emit(`chatMessage:${chatId}`, payload);
+      // Send message to bot
+      await bot.sendMessage(chatId, text);
+
+      // Reset unanswered message count
+      await chats.findOneAndUpdate(
+        { id: chatId },
+        { unansweredMessagesCount: 0 }
+      );
+
+      // Save message to database
+      chatMessages.messages.push(payload);
+      await chatMessages.save();
+
+      // Emit to clients
+      socket.emit(`chatMessage:${chatId}`, payload);
+      io.emit("unansweredMessagesCount", { count: 0, chatId });
+
+      // Callback success
+      callback({ success: true, message: "Xabar yuborildi" });
+    } catch (error) {
+      console.error("Error in sendMessage:", error);
+      callback({ success: false, message: "Xatolik yuz berdi" });
+    }
   });
 });

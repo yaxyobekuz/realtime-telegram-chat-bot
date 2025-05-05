@@ -79,6 +79,12 @@ bot.on("message", async (msg) => {
       const save = async () => {
         await chatMessages.save();
         reply("Xabar muvaffaqiyatli yuborildi!");
+
+        const chat = await chats.findOne({ id: chatId });
+        const newCount = chat.unansweredMessagesCount + 1;
+        chat.unansweredMessagesCount = newCount;
+        chat.save();
+        socket.emit("unansweredMessagesCount", { count: newCount, chatId });
       };
 
       if (message) {
