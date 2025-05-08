@@ -57,6 +57,14 @@ const messagesSchema = new mongoose.Schema({
     unique: true,
     required: true,
   },
+  passportId: {
+    type: String,
+    default: null,
+  },
+  paymentId: {
+    type: String,
+    default: null,
+  },
   user: userSchema,
   messages: [messageSchema],
   createdAt: {
