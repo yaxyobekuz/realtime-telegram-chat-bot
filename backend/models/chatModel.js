@@ -34,9 +34,9 @@ const userSchema = new mongoose.Schema({
 
 const chatSchema = new mongoose.Schema({
   id: {
-    type: Number,
     unique: true,
     required: true,
+    type: mongoose.Schema.Types.Mixed,
   },
   unansweredMessagesCount: {
     type: Number,
