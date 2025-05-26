@@ -1,22 +1,23 @@
 require("./connectDB");
 const { server } = require("./app");
 const { port } = require("../config");
-const chatModel = require("./models/chatModel");
+const messagesModel = require("./models/messagesModel");
 
 require("./start/routes");
 require("./socketConnection");
 
 (async () => {
-  const savedMessagesChat = await chatModel.findOne({ id: "saved" });
+  const savedMessages = await messagesModel.findOne({ id: "saved" });
 
-  if (savedMessagesChat) return;
+  if (savedMessages) return;
 
-  const newChat = new chatModel({
+  const createdSavedMessages = new messagesModel({
     id: "saved",
+    messages: [],
     user: { id: 0, username: null },
   });
 
-  await newChat.save();
+  await createdSavedMessages.save();
 })();
 
 server.listen(port, () => {
