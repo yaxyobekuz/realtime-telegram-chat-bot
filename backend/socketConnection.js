@@ -8,8 +8,6 @@ io.on("connection", (socket) => {
     try {
       const { text, chatId } = data;
 
-      console.log("salom: kaylam", text);
-
       // Validate input
       if (!text || !chatId) {
         return callback({ success: false, message: "Invalid data" });
@@ -23,7 +21,7 @@ io.on("connection", (socket) => {
       const payload = { text, isAdmin: true, type: "text" };
 
       // Send message to bot
-      await bot.sendMessage(chatId, text);
+      if (chatId !== 1) await bot.sendMessage(chatId, text);
 
       // Reset unanswered message count
       await chats.findOneAndUpdate(

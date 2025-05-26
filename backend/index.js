@@ -7,17 +7,21 @@ require("./start/routes");
 require("./socketConnection");
 
 (async () => {
-  const savedMessages = await messagesModel.findOne({ id: "saved" });
+  const savedMessages = await messagesModel.findOne({ id: 1 });
 
   if (savedMessages) return;
 
   const createdSavedMessages = new messagesModel({
-    id: "saved",
+    id: 1,
     messages: [],
-    user: { id: 0, username: null },
+    user: { id: 1, username: null },
   });
 
-  await createdSavedMessages.save();
+  try {
+    await createdSavedMessages.save();
+  } catch {
+    console.log("Saved messages error! ", savedMessages);
+  }
 })();
 
 server.listen(port, () => {

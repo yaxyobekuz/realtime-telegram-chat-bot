@@ -27,7 +27,7 @@ router.get("/chat/:id/messages", async (req, res) => {
     return res.status(400).json({ message: "Chat ID raqami mavjud emas!" });
   }
 
-  const messagesData = await messages.findOne({ id });
+  const messagesData = await messages.findOne({ id: Number(id) });
 
   if (!messagesData) {
     return res.status(404).json({ message: "Xabarlar topilmadi!" });

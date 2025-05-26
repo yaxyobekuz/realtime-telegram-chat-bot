@@ -53,9 +53,9 @@ const messageSchema = new mongoose.Schema({
 
 const messagesSchema = new mongoose.Schema({
   id: {
+    type: Number,
     unique: true,
     required: true,
-    type: mongoose.Schema.Types.Mixed,
   },
   passportId: {
     type: String,
