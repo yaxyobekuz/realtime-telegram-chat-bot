@@ -1,15 +1,19 @@
 const bot = require("../bot");
+
+// Socket
+const { socket } = require("../../backend/app");
+
+// Utils
+const { getFile } = require("../utils/helpers");
+
+// Hooks
 const useUser = require("../../hooks/useUser");
 const useText = require("../../hooks/useText");
-const { socket } = require("../../backend/app");
 const useMessage = require("../../hooks/useMessage");
+
+// Models
 const chats = require("../../backend/models/chatModel");
 const messages = require("../../backend/models/messagesModel");
-const {
-  getFile,
-  downloadImage,
-  uploadImageToObjectDB,
-} = require("../utils/helpers");
 
 bot.on("message", async (msg) => {
   const message = msg.text;
@@ -77,7 +81,6 @@ bot.on("message", async (msg) => {
       }
 
       const save = async () => {
-        await chatMessages.save();
         reply("Xabar muvaffaqiyatli yuborildi!");
 
         const chat = await chats.findOne({ id: chatId });
@@ -85,18 +88,17 @@ bot.on("message", async (msg) => {
         chat.unansweredMessagesCount = newCount;
         chat.save();
         socket.emit("unansweredMessagesCount", { count: newCount, chatId });
+        return await chatMessages.save();
       };
 
       if (message) {
         chatMessages.messages.push({ text: message });
 
-        await save();
+        const saved = await save();
+        const savedMessageData = saved.messages.at(-1);
 
         // Send new message data to chat app
-        return socket.emit(`chatMessage:${chatId}`, {
-          type: "text",
-          text: message,
-        });
+        return socket.emit(`chatMessage:${chatId}`, savedMessageData);
       }
 
       // Photo
@@ -114,10 +116,12 @@ bot.on("message", async (msg) => {
         };
 
         chatMessages.messages.push(messageData);
-        await save();
+
+        const saved = await save();
+        const savedMessageData = saved.messages.at(-1);
 
         // Send new message data to chat app
-        return socket.emit(`chatMessage:${chatId}`, messageData);
+        return socket.emit(`chatMessage:${chatId}`, savedMessageData);
       }
     } catch (err) {
       console.log("Xabar saqlashda xatolik: ", err);
