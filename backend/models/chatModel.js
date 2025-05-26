@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const statuses = require("../../data/statuses");
 
 const profilePhotoSchema = new mongoose.Schema({
   url: {
@@ -44,8 +45,8 @@ const chatSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    default: "Yangi",
-    enum: ["Yangi", "Bloklangan", "Aktiv", "Mijoz"],
+    default: "new",
+    enum: statuses.map(({ value }) => value),
   },
   createdAt: {
     type: Date,
