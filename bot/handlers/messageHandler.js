@@ -1,5 +1,7 @@
 const bot = require("../bot");
 
+const { nanoid } = require("nanoid");
+
 // Dependencies
 const { io } = require("../../backend/app");
 const { getFile } = require("../utils/helpers");
@@ -97,12 +99,13 @@ bot.on("message", async (msg) => {
 
       // Handle text message
       if (textMessage) {
-        const createdAt = Date.now();
-        const newMessage = { text: textMessage, createdAt };
+        const uniqueId = nanoid();
+        const newMessage = { uniqueId, text: textMessage };
         chatMessages.messages.push(newMessage);
         const saved = await saveMessage();
+
         const savedMessage = saved.messages.find(
-          (m) => m.createdAt === createdAt
+          (m) => m.uniqueId === uniqueId
         );
 
         return io.emit(`chatMessage:${chatId}`, savedMessage);
@@ -116,9 +119,9 @@ bot.on("message", async (msg) => {
         const fileData = await getFile(photoFileId);
         if (!fileData) return null;
 
-        const createdAt = Date.now();
+        const uniqueId = nanoid();
         const photoMessage = {
-          createdAt,
+          uniqueId,
           type: "photo",
           caption: msg.caption,
           photo: { url: fileData.url, path: fileData.path },
@@ -126,8 +129,9 @@ bot.on("message", async (msg) => {
 
         chatMessages.messages.push(photoMessage);
         const saved = await saveMessage();
+
         const savedMessage = saved.messages.find(
-          (m) => m.createdAt === createdAt
+          (m) => m.uniqueId === uniqueId
         );
 
         return io.emit(`chatMessage:${chatId}`, savedMessage);
