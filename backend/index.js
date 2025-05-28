@@ -1,10 +1,10 @@
-require("./connectDB");
+require("./db/connectDB");
 const { server } = require("./app");
 const { port } = require("../config");
 const messagesModel = require("./models/messagesModel");
 
+require("./socket");
 require("./start/routes");
-require("./socketConnection");
 
 (async () => {
   const savedMessages = await messagesModel.findOne({ id: 1 });

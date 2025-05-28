@@ -1,7 +1,7 @@
-const bot = require("../bot/bot");
-const { socket: io } = require("./app");
-const chats = require("./models/chatModel");
-const messages = require("./models/messagesModel");
+const { io } = require("../app");
+const bot = require("../../bot/bot");
+const chats = require("../models/chatModel");
+const messages = require("../models/messagesModel");
 
 io.on("connection", (socket) => {
   socket.on("sendMessage", async (data, callback) => {

@@ -1,9 +1,7 @@
 const bot = require("../bot");
 
-// Socket
-const { socket } = require("../../backend/app");
-
-// Utils
+// Dependencies
+const { io } = require("../../backend/app");
 const { getFile } = require("../utils/helpers");
 
 // Hooks
@@ -12,19 +10,21 @@ const useText = require("../../hooks/useText");
 const useMessage = require("../../hooks/useMessage");
 
 // Models
-const chats = require("../../backend/models/chatModel");
-const messages = require("../../backend/models/messagesModel");
+const ChatModel = require("../../backend/models/chatModel");
+const MessageModel = require("../../backend/models/messagesModel");
 
 bot.on("message", async (msg) => {
-  const message = msg.text;
   const chatId = msg.chat.id;
+  const textMessage = msg.text;
 
+  // Initialize hooks
   const { t } = useText(chatId);
-  const { reply, matches } = useMessage(chatId, message);
+  const { reply, matches } = useMessage(chatId, textMessage);
   const { findUserById, registerUser, isUserInStatus } = useUser(chatId);
-  const user = await findUserById(); // Get user data from data base
 
-  // Create user
+  const user = await findUserById();
+
+  // Register user if not found
   if (!user) {
     try {
       await registerUser(msg.from);
@@ -34,97 +34,106 @@ bot.on("message", async (msg) => {
     }
   }
 
-  const isUserReadyForMessage = isUserInStatus(user, "awaitingMessage");
+  const isWaitingForMessage = isUserInStatus(user, "awaitingMessage");
 
-  // Create chat with admin
-  if (matches("/chat") && !isUserReadyForMessage) {
+  // Handle /chat command
+  if (matches("/chat") && !isWaitingForMessage) {
     try {
-      const existingChat = await chats.findOne({ id: chatId });
+      const existingChat = await ChatModel.findOne({ id: chatId });
 
-      // Check if chat already exists
+      // Create a new chat if not found
       if (!existingChat) {
-        const chat = await chats.create({ user, id: chatId });
-        socket.emit("receiveChat", chat); // Send new chat data to chat app
+        const newChat = await ChatModel.create({ user, id: chatId });
+        io.emit("receiveChat", newChat); // Notify chat app
       }
 
-      const existingChatMessages = await messages.findOne({ id: chatId });
+      const chatMessages = await MessageModel.findOne({ id: chatId });
 
-      // Check if chat messages exist
-      if (!existingChatMessages) {
-        await messages.create({ user, id: chatId });
+      // Create message document if not found
+      if (!chatMessages) {
+        await MessageModel.create({ user, id: chatId });
       }
 
+      // Update user status to 'awaitingMessage'
       user.status = "awaitingMessage";
-      await user.save(); // Update user status in the database
+      await user.save();
 
-      reply("😊 Chat boshlandi! Iltimos, xabar yuboring: ");
-
-      return;
-    } catch (err) {
-      console.log("Chat yaratishda xatolik:", err);
-      reply("Chat yaratishda xatolik yuz berdi.");
+      return reply("😊 Chat boshlandi! Iltimos, xabar yuboring:");
+    } catch (error) {
+      console.error("Chat creation error:", error);
+      return reply("Chat yaratishda xatolik yuz berdi.");
     }
   }
 
-  // Send messages to admin
-  if (isUserReadyForMessage) {
+  // Handle incoming messages
+  if (isWaitingForMessage) {
     try {
-      const chatMessages = await messages.findOne({ id: chatId });
+      const chatMessages = await MessageModel.findOne({ id: chatId });
 
-      // Check if chat exists
       if (!chatMessages) {
         reply("Chat topilmadi. Iltimos, /chat buyrug'ini yuboring.");
 
-        user.status = "default"; // Reset user status
-        await user.save(); // Update user status in the database
+        // Reset user status
+        user.status = "default";
+        await user.save();
         return;
       }
 
-      const save = async () => {
+      // Helper function to save chat and notify
+      const saveMessage = async () => {
         reply("Xabar muvaffaqiyatli yuborildi!");
 
-        const chat = await chats.findOne({ id: chatId });
-        const newCount = chat.unansweredMessagesCount + 1;
-        chat.unansweredMessagesCount = newCount;
-        chat.save();
-        socket.emit("unansweredMessagesCount", { count: newCount, chatId });
+        const chat = await ChatModel.findOne({ id: chatId });
+        chat.unansweredMessagesCount += 1;
+        await chat.save();
+
+        io.emit("unansweredMessagesCount", {
+          count: chat.unansweredMessagesCount,
+          chatId,
+        });
+
         return await chatMessages.save();
       };
 
-      if (message) {
-        chatMessages.messages.push({ text: message });
+      // Handle text message
+      if (textMessage) {
+        const createdAt = Date.now();
+        const newMessage = { text: textMessage, createdAt };
+        chatMessages.messages.push(newMessage);
+        const saved = await saveMessage();
+        const savedMessage = saved.messages.find(
+          (m) => m.createdAt === createdAt
+        );
 
-        const saved = await save();
-        const savedMessageData = saved.messages.at(-1);
-
-        // Send new message data to chat app
-        return socket.emit(`chatMessage:${chatId}`, savedMessageData);
+        return io.emit(`chatMessage:${chatId}`, savedMessage);
       }
 
-      // Photo
+      // Handle photo message
       else if (msg.photo) {
-        const photoId = msg.photo[msg.photo.length - 1].file_id;
+        const photoArray = msg.photo;
+        const photoFileId = photoArray[photoArray.length - 1].file_id;
 
-        // Get message photo file url
-        const file = await getFile(photoId);
-        if (!file) return null;
+        const fileData = await getFile(photoFileId);
+        if (!fileData) return null;
 
-        const messageData = {
+        const createdAt = Date.now();
+        const photoMessage = {
+          createdAt,
           type: "photo",
           caption: msg.caption,
-          photo: { url: file.url, path: file.path },
+          photo: { url: fileData.url, path: fileData.path },
         };
 
-        chatMessages.messages.push(messageData);
+        chatMessages.messages.push(photoMessage);
+        const saved = await saveMessage();
+        const savedMessage = saved.messages.find(
+          (m) => m.createdAt === createdAt
+        );
 
-        const saved = await save();
-        const savedMessageData = saved.messages.at(-1);
-
-        // Send new message data to chat app
-        return socket.emit(`chatMessage:${chatId}`, savedMessageData);
+        return io.emit(`chatMessage:${chatId}`, savedMessage);
       }
-    } catch (err) {
-      console.log("Xabar saqlashda xatolik: ", err);
+    } catch (error) {
+      console.error("Message saving error:", error);
       reply("Xabarni saqlab bo'lmadi.");
     }
   }

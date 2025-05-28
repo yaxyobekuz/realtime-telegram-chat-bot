@@ -10,7 +10,7 @@ const app = express();
 app.use(cors());
 const server = http.createServer(app);
 
-const socket = new Server(server, {
+const io = new Server(server, {
   cors: {
     methods: ["GET", "POST", "DELETE", "PUT"],
     origin: [
@@ -23,4 +23,4 @@ const socket = new Server(server, {
 
 const objectDB = new S3Client(objectDBConfig);
 
-module.exports = { socket, app, express, server, objectDB };
+module.exports = { io, app, express, server, objectDB };
