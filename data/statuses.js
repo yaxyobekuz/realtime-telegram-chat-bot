@@ -24,28 +24,16 @@ const statuses = [
     value: "ticketIssued",
   },
   {
-    label: "Bloklangan",
-    value: "blocked",
+    label: "Yakunlangan",
+    value: "completed",
   },
   {
     label: "Bekor qilingan",
     value: "cancelled",
   },
   {
-    label: "Rad etilgan",
-    value: "rejected",
-  },
-  {
-    label: "Ko'rib chiqilmoqda",
-    value: "underReview",
-  },
-  {
-    label: "Yakunlangan",
-    value: "completed",
-  },
-  {
-    label: "Yetkazilgan",
-    value: "delivered",
+    label: "Bloklangan",
+    value: "blocked",
   },
 ];
 
