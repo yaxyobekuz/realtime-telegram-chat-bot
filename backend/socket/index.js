@@ -1,14 +1,14 @@
 const { io } = require("../app");
 const bot = require("../../bot/bot");
-const chats = require("../models/chatModel");
-const messages = require("../models/messagesModel");
+const Chat = require("../models/Chat");
+const Message = require("../models/Message");
 
 io.on("connection", (socket) => {
   socket.on("sendMessage", async (data, callback) => {
     try {
       const text = data.text;
       const chatId = Number(data.chatId);
-      const payload = { text, isAdmin: true, type: "text" };
+      const payload = { chatId, text, isAdmin: true };
 
       // Validate input
       if (!text || !Number.isInteger(chatId) || chatId <= 0) {
@@ -16,29 +16,21 @@ io.on("connection", (socket) => {
       }
 
       // Reset unanswered message count
-      const chatMessages = await messages.findOneAndUpdate(
-        { id: chatId },
-        { $push: { messages: payload } },
-        { new: true }
-      );
-
-      if (!chatMessages) {
-        return callback({ success: false, message: "Chat not found" });
-      }
+      const newMessage = new Message(payload);
 
       // Send message to bot
       if (chatId !== 1) await bot.sendMessage(chatId, text);
 
       // Reset unanswered message count
-      await chats.findOneAndUpdate(
+      await Chat.findOneAndUpdate(
         { id: chatId },
         { unansweredMessagesCount: 0 }
       );
 
-      const newMessageData = chatMessages.messages.at(-1);
+      const savedMessage = await newMessage.save();
 
       // Emit to clients
-      socket.emit(`chatMessage:${chatId}`, newMessageData);
+      socket.emit(`chatMessage:${chatId}`, savedMessage);
       io.emit("unansweredMessagesCount", { count: 0, chatId });
 
       // Callback success

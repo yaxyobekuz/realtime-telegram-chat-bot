@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const userPhotoSchema = new mongoose.Schema({
+const photoSchema = new mongoose.Schema({
   id: {
     type: Number,
     unique: true,
@@ -20,4 +20,4 @@ const userPhotoSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("userPhoto", userPhotoSchema);
+module.exports = mongoose.model("Photo", photoSchema);

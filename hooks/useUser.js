@@ -1,4 +1,4 @@
-const users = require("../backend/models/userModel");
+const users = require("../backend/models/User");
 const { getUserProfilePhotoUrl } = require("../bot/utils/helpers");
 
 const useUser = (userId) => {

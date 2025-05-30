@@ -39,6 +39,14 @@ const chatSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  passportId: {
+    type: String,
+    default: null,
+  },
+  paymentId: {
+    type: String,
+    default: null,
+  },
   unansweredMessagesCount: {
     type: Number,
     default: 0,
@@ -55,4 +63,4 @@ const chatSchema = new mongoose.Schema({
   user: userSchema,
 });
 
-module.exports = mongoose.model("chat", chatSchema);
+module.exports = mongoose.model("Chat", chatSchema);

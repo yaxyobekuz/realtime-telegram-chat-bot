@@ -1,10 +1,10 @@
 const express = require("express");
 const router = express.Router();
-const userPhoto = require("../models/userPhotoModel");
+const Photo = require("../models/Photo");
 
 router.get("/profile-photo/:id", async (req, res) => {
   try {
-    const photo = await userPhoto.findOne({ id: req.params.id });
+    const photo = await Photo.findOne({ id: req.params.id });
     if (!photo) return res.status(404).send("Rasm topilmadi");
 
     res.set("Content-Type", photo.contentType);

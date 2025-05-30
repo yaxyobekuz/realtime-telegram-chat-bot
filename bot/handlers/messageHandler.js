@@ -1,7 +1,5 @@
 const bot = require("../bot");
 
-const { nanoid } = require("nanoid");
-
 // Dependencies
 const { io } = require("../../backend/app");
 const { getFile } = require("../utils/helpers");
@@ -12,8 +10,8 @@ const useText = require("../../hooks/useText");
 const useMessage = require("../../hooks/useMessage");
 
 // Models
-const ChatModel = require("../../backend/models/chatModel");
-const MessageModel = require("../../backend/models/messagesModel");
+const Chat = require("../../backend/models/Chat");
+const Message = require("../../backend/models/Message");
 
 bot.on("message", async (msg) => {
   const chatId = msg.chat.id;
@@ -41,19 +39,12 @@ bot.on("message", async (msg) => {
   // Handle /chat command
   if (matches("/chat") && !isWaitingForMessage) {
     try {
-      const existingChat = await ChatModel.findOne({ id: chatId });
+      const existingChat = await Chat.findOne({ id: chatId });
 
       // Create a new chat if not found
       if (!existingChat) {
-        const newChat = await ChatModel.create({ user, id: chatId });
+        const newChat = await Chat.create({ user, id: chatId });
         io.emit("receiveChat", newChat); // Notify chat app
-      }
-
-      const chatMessages = await MessageModel.findOne({ id: chatId });
-
-      // Create message document if not found
-      if (!chatMessages) {
-        await MessageModel.create({ user, id: chatId });
       }
 
       // Update user status to 'awaitingMessage'
@@ -62,7 +53,7 @@ bot.on("message", async (msg) => {
 
       return reply("😊 Chat boshlandi! Iltimos, xabar yuboring:");
     } catch (error) {
-      console.error("Chat creation error:", error);
+      console.error("Chat creation error: ", error);
       return reply("Chat yaratishda xatolik yuz berdi.");
     }
   }
@@ -70,22 +61,11 @@ bot.on("message", async (msg) => {
   // Handle incoming messages
   if (isWaitingForMessage) {
     try {
-      const chatMessages = await MessageModel.findOne({ id: chatId });
-
-      if (!chatMessages) {
-        reply("Chat topilmadi. Iltimos, /chat buyrug'ini yuboring.");
-
-        // Reset user status
-        user.status = "default";
-        await user.save();
-        return;
-      }
-
       // Helper function to save chat and notify
-      const saveMessage = async () => {
+      const saveMessage = async (message) => {
         reply("Xabar muvaffaqiyatli yuborildi!");
 
-        const chat = await ChatModel.findOne({ id: chatId });
+        const chat = await Chat.findOne({ id: chatId });
         chat.unansweredMessagesCount += 1;
         await chat.save();
 
@@ -94,19 +74,13 @@ bot.on("message", async (msg) => {
           chatId,
         });
 
-        return await chatMessages.save();
+        return await message.save();
       };
 
       // Handle text message
       if (textMessage) {
-        const uniqueId = nanoid();
-        const newMessage = { uniqueId, text: textMessage };
-        chatMessages.messages.push(newMessage);
-        const saved = await saveMessage();
-
-        const savedMessage = saved.messages.find(
-          (m) => m.uniqueId === uniqueId
-        );
+        const newMessage = new Message({ text: textMessage, chatId });
+        const savedMessage = await saveMessage(newMessage);
 
         return io.emit(`chatMessage:${chatId}`, savedMessage);
       }
@@ -119,25 +93,20 @@ bot.on("message", async (msg) => {
         const fileData = await getFile(photoFileId);
         if (!fileData) return null;
 
-        const uniqueId = nanoid();
         const photoMessage = {
-          uniqueId,
+          chatId,
           type: "photo",
           caption: msg.caption,
           photo: { url: fileData.url, path: fileData.path },
         };
 
-        chatMessages.messages.push(photoMessage);
-        const saved = await saveMessage();
-
-        const savedMessage = saved.messages.find(
-          (m) => m.uniqueId === uniqueId
-        );
+        const newMessage = new Message(photoMessage);
+        const savedMessage = await saveMessage(newMessage);
 
         return io.emit(`chatMessage:${chatId}`, savedMessage);
       }
     } catch (error) {
-      console.error("Message saving error:", error);
+      console.error("Message saving error: ", error);
       reply("Xabarni saqlab bo'lmadi.");
     }
   }
