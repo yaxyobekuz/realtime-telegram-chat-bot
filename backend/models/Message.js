@@ -1,13 +1,6 @@
 const mongoose = require("mongoose");
 
-const photoSchema = new mongoose.Schema({
-  url: { type: String, default: null },
-  path: { type: String, default: null },
-  createdAt: { type: Date, default: Date.now },
-});
-
 const messageSchema = new mongoose.Schema({
-  photo: photoSchema,
   text: { type: String },
   caption: { type: String },
   chatId: { type: Number, required: true },
@@ -15,6 +8,7 @@ const messageSchema = new mongoose.Schema({
   isAdmin: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
+  photo: { type: mongoose.Schema.Types.ObjectId, ref: "Photo" },
   type: {
     type: String,
     default: "text",
