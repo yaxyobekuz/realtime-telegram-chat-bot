@@ -2,7 +2,7 @@ const bot = require("../bot");
 
 // Dependencies
 const { io } = require("../../backend/app");
-const { getFile } = require("../utils/helpers");
+const { getFile, downloadAndUploadImage } = require("../utils/helpers");
 
 // Hooks
 const useUser = require("../../hooks/useUser");
@@ -11,15 +11,16 @@ const useMessage = require("../../hooks/useMessage");
 
 // Models
 const Chat = require("../../backend/models/Chat");
+const Photo = require("../../backend/models/Photo");
 const Message = require("../../backend/models/Message");
 
 bot.on("message", async (msg) => {
+  const text = msg.text;
   const chatId = msg.chat.id;
-  const textMessage = msg.text;
 
   // Initialize hooks
   const { t } = useText(chatId);
-  const { reply, matches } = useMessage(chatId, textMessage);
+  const { reply, matches } = useMessage(chatId, text);
   const { findUserById, registerUser, isUserInStatus } = useUser(chatId);
 
   const user = await findUserById();
@@ -63,50 +64,78 @@ bot.on("message", async (msg) => {
     try {
       // Helper function to save chat and notify
       const saveMessage = async (message) => {
+        // Save message and update chat count in parallel
+        const [savedMessage, chat] = await Promise.all([
+          message.save(),
+          Chat.findOneAndUpdate(
+            { id: chatId },
+            { $inc: { unansweredMessagesCount: 1 } },
+            { new: true }
+          ),
+        ]);
+
+        // Send notifications
         reply("Xabar muvaffaqiyatli yuborildi!");
-
-        const chat = await Chat.findOne({ id: chatId });
-        chat.unansweredMessagesCount += 1;
-        await chat.save();
-
         io.emit("unansweredMessagesCount", {
-          count: chat.unansweredMessagesCount,
           chatId,
+          count: chat.unansweredMessagesCount,
         });
 
-        return await message.save();
+        return savedMessage;
       };
 
       // Handle text message
-      if (textMessage) {
-        const newMessage = new Message({ text: textMessage, chatId });
+      if (text) {
+        const newMessage = new Message({ text, chatId });
         const savedMessage = await saveMessage(newMessage);
-
         return io.emit(`chatMessage:${chatId}`, savedMessage);
       }
 
       // Handle photo message
-      else if (msg.photo) {
-        const photoArray = msg.photo;
-        const photoFileId = photoArray[photoArray.length - 1].file_id;
-
+      if (msg.photo) {
+        const photoFileId = msg.photo[msg.photo.length - 1].file_id;
         const fileData = await getFile(photoFileId);
-        if (!fileData) return null;
 
-        const photoMessage = {
+        if (!fileData) return reply("Rasmni yuklashda xatolik yuz berdi.");
+
+        // Create and save photo
+        const photo = new Photo({
+          chatId,
+          url: fileData.url,
+          path: fileData.path,
+        });
+        const savedPhoto = await photo.save();
+
+        // Create and save message
+        const newMessage = new Message({
           chatId,
           type: "photo",
           caption: msg.caption,
-          photo: { url: fileData.url, path: fileData.path },
-        };
-
-        const newMessage = new Message(photoMessage);
+          photo: savedPhoto._id,
+        });
         const savedMessage = await saveMessage(newMessage);
 
-        return io.emit(`chatMessage:${chatId}`, savedMessage);
+        // Emit message with photo data
+        io.emit(`chatMessage:${chatId}`, {
+          ...savedMessage.toObject(),
+          photo: savedPhoto,
+        });
+
+        // Upload image asynchronously
+        downloadAndUploadImage(savedPhoto)
+          .then((uploadedPhoto) => {
+            if (uploadedPhoto) {
+              savedPhoto.url = uploadedPhoto.url;
+              savedPhoto.path = uploadedPhoto.path;
+              return savedPhoto.save();
+            }
+          })
+          .catch((err) => console.log("Image upload error: ", err));
+
+        return;
       }
-    } catch (error) {
-      console.error("Message saving error: ", error);
+    } catch (err) {
+      console.log("Message saving error: ", err);
       reply("Xabarni saqlab bo'lmadi.");
     }
   }
