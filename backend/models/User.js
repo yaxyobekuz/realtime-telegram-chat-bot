@@ -1,14 +1,9 @@
 const mongoose = require("mongoose");
 
 const profilePhotoSchema = new mongoose.Schema({
-  url: {
-    type: String,
-    default: null,
-  },
-  path: {
-    type: String,
-    default: null,
-  },
+  url: { type: String, default: null },
+  path: { type: String, default: null },
+  createdAt: { type: Date, default: Date.now },
 });
 
 const userSchema = new mongoose.Schema({

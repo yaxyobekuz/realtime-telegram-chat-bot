@@ -34,7 +34,7 @@ router.get("/chat/:id/messages", async (req, res) => {
     return res.status(400).json({ message: "Chat ID raqami mavjud emas" });
   }
 
-  const messages = await Message.find({ chatId: Number(id) });
+  const messages = await Message.find({ chatId: Number(id) }).populate("photo");
   res.send({ id, messages });
 });
 
@@ -61,7 +61,6 @@ router.put("/chat/:id/status", async (req, res) => {
     res.send({
       id,
       ok: true,
-      status: 200,
       updatedStatus: newStatus,
       message: `${id} raqamli chat holati muvaffaqiyatli ${newStatus} ga o'zgartirildi`,
     });
@@ -104,7 +103,6 @@ router.put("/chat/:id/update/:fieldName", async (req, res) => {
     res.send({
       ok: true,
       fieldName,
-      status: 200,
       updatedId: updatedMessageId,
       message: `${fieldName} muvaffaqiyatli ${updatedMessageId} ga o'zgartirildi`,
     });
