@@ -5,6 +5,7 @@ const router = express.Router();
 const User = require("../models/User");
 const Photo = require("../models/Photo");
 const Payment = require("../models/Payment");
+const Message = require("../models/Message");
 
 // Get all payments
 router.get("/", async (req, res) => {
@@ -70,7 +71,7 @@ router.post("/new", async (req, res) => {
       return res.status(404).json({ message: "Rasm topilmadi" });
     }
 
-    const newPayment = new Payment({
+    const newPayment = await Payment.insertOne({
       amount,
       chatId,
       messageId,
@@ -79,7 +80,10 @@ router.post("/new", async (req, res) => {
       photo: photo._id,
     });
 
-    await newPayment.save();
+    await Message.findByIdAndUpdate(
+      { _id: messageId },
+      { paymentId: newPayment._id }
+    );
 
     res.status(201).send({
       ok: true,
