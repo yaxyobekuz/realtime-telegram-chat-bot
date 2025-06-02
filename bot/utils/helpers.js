@@ -79,6 +79,18 @@ const deleteImageFromObjectDB = async (fileName) => {
   }
 };
 
+const downloadAndUploadImage = async (photo) => {
+  // Get photo buffer
+  const imageBuffer = await downloadImage(photo.url);
+  if (!imageBuffer) return null;
+
+  // Upload image to object data base
+  const uploaded = await uploadImageToObjectDB(imageBuffer, photo.path);
+  if (!uploaded) return null;
+
+  return uploaded; // Return upload image url & path
+};
+
 const getUserProfilePhotoUrl = async (userId) => {
   // Get user first profile photo image id
   const photoId = await getUserProfilePhotoId(userId);
@@ -88,15 +100,7 @@ const getUserProfilePhotoUrl = async (userId) => {
   const file = await getFile(photoId);
   if (!file) return null;
 
-  // Get photo buffer
-  const imageBuffer = await downloadImage(file.url);
-  if (!imageBuffer) return null;
-
-  // Upload image to object data base
-  const uploaded = await uploadImageToObjectDB(imageBuffer, file.path);
-  if (!uploaded) return null;
-
-  return uploaded; // Return upload image url & path
+  return await downloadAndUploadImage(file);
 };
 
 module.exports = {
@@ -104,4 +108,5 @@ module.exports = {
   downloadImage,
   uploadImageToObjectDB,
   getUserProfilePhotoUrl,
+  downloadAndUploadImage,
 };
