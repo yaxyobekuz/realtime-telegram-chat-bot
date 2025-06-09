@@ -30,14 +30,19 @@ io.on("connection", (socket) => {
       const savedMessage = await newMessage.save();
 
       // Emit to clients
-      socket.emit(`chatMessage:${chatId}`, savedMessage);
+      io.emit(`chatMessage:${chatId}`, savedMessage);
       io.emit("unansweredMessagesCount", { count: 0, chatId });
 
       // Callback success
       callback({ success: true, message: "Xabar yuborildi" });
     } catch (error) {
       console.log("Error in sendMessage:", error);
-      callback({ success: false, message: "Xatolik yuz berdi" });
+
+      try {
+        callback({ success: false, message: "Xatolik yuz berdi" });
+      } catch {
+        console.log("Error in callback:");
+      }
     }
   });
 });
