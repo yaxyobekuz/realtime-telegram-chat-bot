@@ -6,6 +6,7 @@ const messageSchema = new mongoose.Schema({
   chatId: { type: Number, required: true },
   adminId: { type: String, default: null },
   paymentId: { type: String, default: null },
+  passportId: { type: String, default: null },
   isAdmin: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
