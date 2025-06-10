@@ -11,7 +11,7 @@ const Passport = require("../models/Passport");
 router.get("/", async (req, res) => {
   try {
     const passports = await Passport.find().populate("user").populate("photo");
-    res.send(passports);
+    res.send({ ok: true, count: passports.length, data: passports });
   } catch (error) {
     res.status(500).send("Ichki xatolik");
   }

@@ -11,7 +11,7 @@ const Message = require("../models/Message");
 router.get("/", async (req, res) => {
   try {
     const payments = await Payment.find().populate("user").populate("photo");
-    res.send(payments);
+    res.send({ ok: true, count: payments.length, data: payments });
   } catch (error) {
     res.status(500).send("Ichki xatolik");
   }
