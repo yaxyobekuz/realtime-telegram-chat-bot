@@ -10,7 +10,7 @@ const Passport = require("../models/Passport");
 // Get all tickets
 router.get("/", async (req, res) => {
   try {
-    const tickets = await Ticket.find().populate("user");
+    const tickets = await Ticket.find().populate("user").populate("payment");
     res.send({ ok: true, count: tickets.length, data: tickets });
   } catch (error) {
     res.status(500).send("Ichki xatolik");
@@ -29,8 +29,8 @@ router.get("/user/:userId", async (req, res) => {
 
   try {
     const tickets = await Ticket.find({ user: userId })
-      .populate("Payment")
-      .populate("passport");
+      .populate("user")
+      .populate("payment");
 
     const user = await User.findById(userId);
     res.send({ ok: true, count: tickets.length, data: tickets, user });
@@ -57,7 +57,7 @@ router.get("/ticket/:id", async (req, res) => {
       return res.status(404).json({ message: "Chipta ma'lumotlari topilmadi" });
     }
 
-    res.send(ticket);
+    res.send({ ok: true, data: ticket });
   } catch (error) {
     res.status(500).send("Ichki xatolik");
   }
@@ -99,8 +99,8 @@ router.post("/new", async (req, res) => {
       return res.status(404).json({ message: "Pasport topilmadi" });
     }
 
-    // Create a new ticket
-    const newTicket = await Ticket.insertOne({
+    // Create new ticket
+    const newTicket = await Ticket.create({
       name,
       chatId,
       description,
@@ -109,15 +109,21 @@ router.post("/new", async (req, res) => {
       passport: passportId,
     });
 
+    // Update related documents
     payment.ticket = newTicket._id;
     passport.ticket = newTicket._id;
-    await payment.save();
-    await passport.save();
+    await Promise.all([payment.save(), passport.save()]);
 
-    // Send
-    res.status(201).send({
+    // Prepare response with populated data
+    const ticketResponse = {
+      ...newTicket.toObject(),
+      user,
+      payment,
+    };
+
+    res.status(201).json({
       ok: true,
-      data: newTicket,
+      data: ticketResponse,
       message: "Chipta muvaffaqiyatli yaratildi",
     });
   } catch (err) {
