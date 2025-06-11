@@ -17,6 +17,27 @@ router.get("/", async (req, res) => {
   }
 });
 
+// Get all user payments
+router.get("/user/:userId", async (req, res) => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    return res
+      .status(400)
+      .json({ message: "Foydalanuvchi ID raqami mavjud emas" });
+  }
+
+  try {
+    const payments = await Payment.find({ user: userId })
+      .populate("user")
+      .populate("photo");
+
+    res.send({ ok: true, count: payments.length, data: payments });
+  } catch (error) {
+    res.status(500).send("Ichki xatolik");
+  }
+});
+
 // Get single payment
 router.get("/payment/:id", async (req, res) => {
   const { id } = req.params;

@@ -17,6 +17,27 @@ router.get("/", async (req, res) => {
   }
 });
 
+// Get all user passports
+router.get("/user/:userId", async (req, res) => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    return res
+      .status(400)
+      .json({ message: "Foydalanuvchi ID raqami mavjud emas" });
+  }
+
+  try {
+    const passports = await Passport.find({ user: userId })
+      .populate("user")
+      .populate("photo");
+
+    res.send({ ok: true, count: passports.length, data: passports });
+  } catch (error) {
+    res.status(500).send("Ichki xatolik");
+  }
+});
+
 // Get single passport
 router.get("/passport/:id", async (req, res) => {
   const { id } = req.params;
