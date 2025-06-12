@@ -50,8 +50,8 @@ router.get("/ticket/:id", async (req, res) => {
   try {
     const ticket = await Ticket.findById(id)
       .populate("user")
-      .populate("Payment")
-      .populate("passport");
+      .populate({ path: "payment", populate: "photo" })
+      .populate({ path: "passport", populate: "photo" });
 
     if (!ticket) {
       return res.status(404).json({ message: "Chipta ma'lumotlari topilmadi" });
