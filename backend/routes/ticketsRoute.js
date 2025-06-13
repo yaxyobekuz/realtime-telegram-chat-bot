@@ -1,11 +1,40 @@
+const path = require("path");
 const express = require("express");
 const router = express.Router();
+const multer = require("multer");
 
 // Models
 const User = require("../models/User");
+const File = require("../models/File");
 const Ticket = require("../models/Ticket");
 const Payment = require("../models/Payment");
 const Passport = require("../models/Passport");
+const {
+  generateFileName,
+  uploadFileToObjectDB,
+} = require("../../bot/utils/helpers");
+
+// Configure multer for file upload
+const storage = multer.memoryStorage();
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 100 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    // Allow common file types
+    const allowedTypes = /pdf|doc|docx/;
+    const extName = allowedTypes.test(
+      path.extname(file.originalname).toLowerCase()
+    );
+    const mimeType = allowedTypes.test(file.mimetype);
+
+    if (mimeType && extName) {
+      return cb(null, true);
+    } else {
+      cb(new Error("Fayl turi qo'llab-quvvatlanmaydi"));
+    }
+  },
+});
 
 // Get all tickets
 router.get("/", async (req, res) => {
@@ -50,6 +79,7 @@ router.get("/ticket/:id", async (req, res) => {
   try {
     const ticket = await Ticket.findById(id)
       .populate("user")
+      .populate("file")
       .populate({ path: "payment", populate: "photo" })
       .populate({ path: "passport", populate: "photo" });
 
@@ -129,6 +159,95 @@ router.post("/new", async (req, res) => {
   } catch (err) {
     console.log(err);
     res.status(500).send("Ichki xatolik");
+  }
+});
+
+// Upload file to ticket
+router.post("/upload/:ticketId", upload.single("file"), async (req, res) => {
+  const { ticketId } = req.params;
+
+  if (!ticketId) {
+    return res.status(400).json({ message: "Chipta ID raqami mavjud emas" });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({ message: "Fayl yuklash talab qilinadi" });
+  }
+
+  try {
+    // Check if ticket exists
+    const ticket = await Ticket.findById(ticketId);
+    if (!ticket) {
+      return res.status(404).json({ message: "Chipta topilmadi" });
+    }
+
+    const { originalname, buffer, mimetype, size } = req.file;
+
+    // Generate unique file name
+    const fileName = generateFileName(originalname);
+
+    // Upload file to object storage
+    const uploadResult = await uploadFileToObjectDB(buffer, fileName, mimetype);
+
+    if (!uploadResult) {
+      return res
+        .status(500)
+        .json({ message: "Fayl yuklashda xatolik yuz berdi" });
+    }
+
+    // Create file record in database
+    const newFile = await File.create({
+      fileSize: size,
+      ticket: ticketId,
+      mimeType: mimetype,
+      fileName: fileName,
+      fileUrl: uploadResult.url,
+      originalName: originalname,
+      filePath: uploadResult.path,
+    });
+
+    // Update ticket file id
+    ticket.file = newFile._id;
+    await ticket.save();
+
+    res.status(201).json({
+      ok: true,
+      data: newFile,
+      message: "Fayl muvaffaqiyatli yuklandi",
+    });
+  } catch (error) {
+    console.error("Fayl yuklashda xatolik:", error);
+    res.status(500).json({ message: "Ichki xatolik" });
+  }
+});
+
+// Delete file from ticket
+router.delete("/file/:fileId", async (req, res) => {
+  const { fileId } = req.params;
+
+  if (!fileId) {
+    return res.status(400).json({ message: "Fayl ID raqami mavjud emas" });
+  }
+
+  try {
+    const file = await File.findById(fileId);
+    if (!file) {
+      return res.status(404).json({ message: "Fayl topilmadi" });
+    }
+
+    // Remove file from ticket
+    await Ticket.findByIdAndUpdate(file.ticket, { $pull: { files: fileId } });
+
+    // Delete file record
+    await File.findByIdAndDelete(fileId);
+
+    res.json({
+      ok: true,
+      message: "Fayl muvaffaqiyatli o'chirildi",
+    });
+  } catch (error) {
+    console.error("Fayl o'chirishda xatolik:", error);
+    res.status(500).json({ message: "Ichki xatolik" });
   }
 });
 
