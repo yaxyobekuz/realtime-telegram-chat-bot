@@ -21,6 +21,10 @@ const ticketSchema = new mongoose.Schema({
     ref: "Payment",
     type: mongoose.Schema.Types.ObjectId,
   },
+  file: {
+    ref: "File",
+    type: mongoose.Schema.Types.ObjectId,
+  },
 });
 
-module.exports = mongoose.model("Ticket", ticketSchema);  
+module.exports = mongoose.model("Ticket", ticketSchema);
