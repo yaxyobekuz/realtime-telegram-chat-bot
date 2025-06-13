@@ -1,8 +1,41 @@
+const path = require("path");
 const bot = require("../bot");
 const axios = require("axios");
+const { v4: uuidv4 } = require("uuid");
 const { objectDB } = require("../../backend/app");
 const { botToken, objectDBConfig } = require("../../config");
 const { PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
+
+// Generate unique file name
+const generateFileName = (originalName) => {
+  const fileExtension = path.extname(originalName);
+  const uniqueId = uuidv4();
+  return `${Date.now()}-${uniqueId}${fileExtension}`;
+};
+
+// Upload file to object storage
+const uploadFileToObjectDB = async (buffer, fileName, mimeType) => {
+  try {
+    const params = {
+      Body: buffer,
+      Key: fileName,
+      ACL: "public-read",
+      Bucket: "arzon-umra",
+      ContentType: mimeType,
+    };
+
+    const command = new PutObjectCommand(params);
+    await objectDB.send(command);
+
+    const { endpoint, bucketName } = objectDBConfig;
+    const fileUrl = `${endpoint}/${bucketName}/${fileName}`;
+
+    return { url: fileUrl, path: fileName };
+  } catch (err) {
+    console.error("Fayl objectDB ga yuklashda xatolik:", err);
+    return null;
+  }
+};
 
 const getUserProfilePhotoId = async (userId) => {
   try {
@@ -106,6 +139,8 @@ const getUserProfilePhotoUrl = async (userId) => {
 module.exports = {
   getFile,
   downloadImage,
+  generateFileName,
+  uploadFileToObjectDB,
   uploadImageToObjectDB,
   getUserProfilePhotoUrl,
   downloadAndUploadImage,
