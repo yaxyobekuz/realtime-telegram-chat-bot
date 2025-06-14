@@ -15,25 +15,41 @@ const generateFileName = (originalName) => {
 
 // Upload file to object storage
 const uploadFileToObjectDB = async (buffer, fileName, mimeType) => {
+  const { endpoint, bucketName } = objectDBConfig;
+
   try {
     const params = {
       Body: buffer,
       Key: fileName,
       ACL: "public-read",
-      Bucket: "arzon-umra",
+      Bucket: bucketName,
       ContentType: mimeType,
     };
 
     const command = new PutObjectCommand(params);
     await objectDB.send(command);
 
-    const { endpoint, bucketName } = objectDBConfig;
     const fileUrl = `${endpoint}/${bucketName}/${fileName}`;
 
     return { url: fileUrl, path: fileName };
   } catch (err) {
     console.error("Fayl objectDB ga yuklashda xatolik:", err);
     return null;
+  }
+};
+
+const deleteFileFromObjectDB = async (fileName) => {
+  const { bucketName } = objectDBConfig;
+
+  try {
+    const params = { Key: fileName, Bucket: bucketName };
+
+    const command = new DeleteObjectCommand(params);
+    await objectDB.send(command); // Delete file from objectDB
+    return true;
+  } catch (err) {
+    console.log("Faylni o'chirishda xatolik:", err);
+    return false;
   }
 };
 
@@ -75,18 +91,18 @@ const downloadImage = async (url) => {
 };
 
 const uploadImageToObjectDB = async (buffer, fileName) => {
+  const { endpoint, bucketName } = objectDBConfig;
+
   try {
     const params = {
       Body: buffer,
       Key: fileName,
       ACL: "public-read",
-      Bucket: "arzon-umra",
+      Bucket: bucketName,
     };
 
     const command = new PutObjectCommand(params);
     await objectDB.send(command); // Upload image to objectDB
-
-    const { endpoint, bucketName } = objectDBConfig;
 
     const fileUrl = `${endpoint}/${bucketName}/${fileName}`;
     return { url: fileUrl, path: fileName };
@@ -104,7 +120,6 @@ const deleteImageFromObjectDB = async (fileName) => {
 
     const command = new DeleteObjectCommand(params);
     await objectDB.send(command); // Delete image from objectDB
-    console.log("Rasm muvaffaqiyatli o'chirildi:", fileName);
     return true;
   } catch (err) {
     console.log("Rasmni o'chirishda xatolik:", err);
@@ -144,4 +159,6 @@ module.exports = {
   uploadImageToObjectDB,
   getUserProfilePhotoUrl,
   downloadAndUploadImage,
+  deleteFileFromObjectDB,
+  deleteImageFromObjectDB,
 };

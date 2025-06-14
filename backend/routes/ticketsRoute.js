@@ -12,6 +12,7 @@ const Passport = require("../models/Passport");
 const {
   generateFileName,
   uploadFileToObjectDB,
+  deleteFileFromObjectDB,
 } = require("../../bot/utils/helpers");
 
 // Configure multer for file upload
@@ -163,7 +164,7 @@ router.post("/new", async (req, res) => {
 });
 
 // Upload file to ticket
-router.post("/upload/:ticketId", upload.single("file"), async (req, res) => {
+router.put("/upload/:ticketId", upload.single("file"), async (req, res) => {
   const { ticketId } = req.params;
 
   if (!ticketId) {
@@ -176,9 +177,18 @@ router.post("/upload/:ticketId", upload.single("file"), async (req, res) => {
 
   try {
     // Check if ticket exists
-    const ticket = await Ticket.findById(ticketId);
+    const ticket = await Ticket.findById(ticketId).populate("file");
     if (!ticket) {
       return res.status(404).json({ message: "Chipta topilmadi" });
+    }
+
+    if (ticket.file) {
+      try {
+        await Ticket.findByIdAndDelete(ticket.file._id);
+        await deleteFileFromObjectDB(ticket.file.fileName);
+      } catch {
+        console.log("Ticket deletion error. File id: ", ticket.file?._id);
+      }
     }
 
     const { originalname, buffer, mimetype, size } = req.file;
