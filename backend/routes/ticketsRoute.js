@@ -1,22 +1,29 @@
 const path = require("path");
 const express = require("express");
 const router = express.Router();
-const multer = require("multer");
 
-// Models
-const User = require("../models/User");
-const File = require("../models/File");
-const Ticket = require("../models/Ticket");
-const Payment = require("../models/Payment");
-const Passport = require("../models/Passport");
+// Socket
+const { io } = require("../app");
+
+// Multer
+const multer = require("multer");
+const storage = multer.memoryStorage();
+
+// Helpers
 const {
   generateFileName,
   uploadFileToObjectDB,
   deleteFileFromObjectDB,
 } = require("../../bot/utils/helpers");
 
-// Configure multer for file upload
-const storage = multer.memoryStorage();
+// Models
+const User = require("../models/User");
+const File = require("../models/File");
+const Ticket = require("../models/Ticket");
+const Message = require("../models/Message");
+const Payment = require("../models/Payment");
+const Passport = require("../models/Passport");
+const useMessage = require("../../hooks/useMessage");
 
 const upload = multer({
   storage: storage,
@@ -258,7 +265,9 @@ router.delete("/file/:fileId", async (req, res) => {
     await ticket.save();
 
     // Delete file record
-    await File.findByIdAndDelete(fileId);
+    if (ticket.status !== "sent") {
+      await File.findByIdAndDelete(fileId);
+    }
 
     res.json({
       ok: true,
@@ -266,6 +275,65 @@ router.delete("/file/:fileId", async (req, res) => {
     });
   } catch (error) {
     console.error("Fayl o'chirishda xatolik:", error);
+    res.status(500).json({ message: "Ichki xatolik" });
+  }
+});
+
+// Send ticket to user
+router.post("/send/:ticketId", async (req, res) => {
+  const { ticketId } = req.params;
+  let { caption } = req.body || {};
+
+  if (!ticketId || typeof ticketId !== "string") {
+    return res.status(400).json({ message: "Chipta ID raqami mavjud emas" });
+  }
+
+  try {
+    // Check if ticket exists
+    const ticket = await Ticket.findById(ticketId).populate("file");
+    if (!ticket) {
+      return res.status(404).json({ message: "Chipta topilmadi" });
+    }
+
+    if (!ticket.file) {
+      return res.status(400).json({ message: "Chipta fayli mavjud emas" });
+    }
+
+    const { chatId } = ticket;
+    caption = `<b>Chiptangiz tayyor ✅</b>\n\n<b>👤 Foydalanuvchi: </b>${
+      ticket.name
+    }\n<b>💬 Qo'shimcha: </b>${caption || ""}`;
+
+    // Create file record in database
+    const newMessage = await Message.create({
+      chatId,
+      caption,
+      type: "file",
+      isAdmin: true,
+      file: ticket.file._id,
+    });
+
+    // Update ticket file id & status
+    ticket.status = "sent";
+    await ticket.save();
+
+    // Send message to user
+    const { sendFile } = useMessage(chatId);
+
+    await sendFile(ticket.file.fileUrl, caption);
+
+    io.emit(`chatMessage:${chatId}`, {
+      ...newMessage.toObject(),
+      file: ticket.file,
+    });
+
+    res.status(201).json({
+      ok: true,
+      data: { ticket, message: newMessage },
+      message: "Chipta muvaffaqiyatli yuborildi",
+    });
+  } catch (error) {
+    console.log("Chipta yuborishda xatolik: ", error);
     res.status(500).json({ message: "Ichki xatolik" });
   }
 });
