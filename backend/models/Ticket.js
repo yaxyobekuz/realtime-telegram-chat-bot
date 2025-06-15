@@ -6,6 +6,11 @@ const ticketSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
   description: { type: String, required: true },
+  status: {
+    type: String,
+    default: "new",
+    enum: ["new", "readyToSend", "sent"],
+  },
   user: {
     ref: "User",
     required: true,

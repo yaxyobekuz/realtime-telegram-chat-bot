@@ -182,6 +182,7 @@ router.put("/upload/:ticketId", upload.single("file"), async (req, res) => {
       return res.status(404).json({ message: "Chipta topilmadi" });
     }
 
+    // If file already exists, delete it
     if (ticket.file) {
       try {
         await Ticket.findByIdAndDelete(ticket.file._id);
@@ -216,8 +217,11 @@ router.put("/upload/:ticketId", upload.single("file"), async (req, res) => {
       filePath: uploadResult.path,
     });
 
-    // Update ticket file id
+    // Update ticket file id & status
     ticket.file = newFile._id;
+    if (ticket.status === "new") {
+      ticket.status = "readyToSend";
+    }
     await ticket.save();
 
     res.status(201).json({
@@ -246,7 +250,12 @@ router.delete("/file/:fileId", async (req, res) => {
     }
 
     // Remove file from ticket
-    await Ticket.findByIdAndUpdate(file.ticket, { $pull: { files: fileId } });
+    const ticket = await Ticket.findById(file.ticket);
+    ticket.file = null;
+    if (ticket.status === "readyToSend") {
+      ticket.status = "new";
+    }
+    await ticket.save();
 
     // Delete file record
     await File.findByIdAndDelete(fileId);
