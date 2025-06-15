@@ -15,12 +15,19 @@ const useMessage = (chatId, targetMessage) => {
     });
   };
 
+  const sendFile = async (fileUrl, caption) => {
+    await bot.sendDocument(chatId, fileUrl, {
+      caption,
+      parse_mode: "HTML",
+    });
+  };
+
   const matches = (input) => {
     if (!input?.trim() || !targetMessage?.trim()) return false;
     return input.trim().toLowerCase() === targetMessage.trim().toLowerCase();
   };
 
-  return { reply, matches };
+  return { reply, matches, sendFile };
 };
 
 module.exports = useMessage;
