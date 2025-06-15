@@ -34,7 +34,10 @@ router.get("/chat/:id/messages", async (req, res) => {
     return res.status(400).json({ message: "Chat ID raqami mavjud emas" });
   }
 
-  const messages = await Message.find({ chatId: Number(id) }).populate("photo");
+  const messages = await Message.find({ chatId: Number(id) })
+    .populate("photo")
+    .populate("file");
+
   res.send({ id, messages });
 });
 
